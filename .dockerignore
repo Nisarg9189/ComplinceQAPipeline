@@ -1,0 +1,23 @@
+# secrets: never bake these into the image
+.env
+.env.*
+
+# environments and caches
+.venv
+__pycache__/
+*.py[oc]
+.git
+.gitignore
+.python-version
+
+# local artifacts
+temp_audit_video.mp4
+*.mp4
+*.m4a
+
+# not needed at runtime (PDFs are indexed locally via backend/scripts/index_documents.py)
+backend/data
+src
+README.md
+Dockerfile
+.dockerignore
