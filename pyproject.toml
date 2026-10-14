@@ -1,0 +1,43 @@
+[project]
+name = "complinceqapipeline"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Nisarg Patel", email = "nisargpatel460@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "azure-identity>=1.26.0",
+    "azure-monitor-opentelemetry>=1.8.11",
+    "azure-search-documents>=12.0.0",
+    "azure-storage-blob>=12.31.0",
+    "dotenv>=0.9.9",
+    "fastapi>=0.143.0",
+    "firecrawl-py>=4.49.3",
+    "langchain>=1.4.3",
+    "langchain-community>=0.4.2",
+    "langchain-openai>=1.7.0",
+    "langchain-postgres>=0.0.19",
+    "langgraph>=1.2.14",
+    "langsmith>=0.14.4",
+    "opentelemetry-instrumentation-fastapi>=0.66b1",
+    "pandas>=3.0.6",
+    "psycopg2-binary>=2.9.13",
+    "pydantic>=2.14.0",
+    "pypdf>=6.19.0",
+    "python-dotenv>=1.2.4",
+    "redis>=8.1.0",
+    "requests>=2.34.2",
+    "sqlalchemy>=2.1.4",
+    "streamlit>=1.65.0",
+    "uvicorn>=0.54.0",
+    "yt-dlp>=2026.8.19",
+]
+
+[project.scripts]
+complinceqapipeline = "complinceqapipeline:main"
+
+[build-system]
+requires = ["uv_build>=0.12.5,<0.13.0"]
+build-backend = "uv_build"
