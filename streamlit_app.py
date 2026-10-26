@@ -4,6 +4,8 @@ Streamlit UI for the Brand Guardian video compliance audit pipeline.
 Run with:  uv run streamlit run streamlit_app.py
 '''
 
+import os
+import tempfile
 import uuid
 
 import streamlit as st
@@ -33,7 +35,7 @@ def merge_update(state: dict, update: dict) -> None:
             state[key] = value
 
 
-def run_audit(video_url: str) -> dict:
+def run_audit(video_url: str = "", local_file_path: str = "") -> dict:
     session_id = str(uuid.uuid4())
     state = {
         "video_url": video_url,
@@ -41,18 +43,33 @@ def run_audit(video_url: str) -> dict:
         "compliance_results": [],
         "errors": [],
     }
+    if local_file_path:
+        state["local_file_path"] = local_file_path
 
-    with st.status("Running audit...", expanded=True) as status:
-        st.write(NODE_LABELS["indexer"])
-        for chunk in audit_graph.stream(state, stream_mode="updates"):
-            for node, update in chunk.items():
-                merge_update(state, update or {})
-                st.write(f"Finished: {node}")
-                if node == "indexer":
-                    st.write(NODE_LABELS["auditor"])
-        status.update(label="Audit complete", state="complete", expanded=False)
+    try:
+        with st.status("Running audit...", expanded=True) as status:
+            st.write(NODE_LABELS["indexer"])
+            for chunk in audit_graph.stream(state, stream_mode="updates"):
+                for node, update in chunk.items():
+                    merge_update(state, update or {})
+                    st.write(f"Finished: {node}")
+                    if node == "indexer":
+                        st.write(NODE_LABELS["auditor"])
+            status.update(label="Audit complete", state="complete", expanded=False)
+    finally:
+        # the indexer deletes the file after upload; this covers failures before that point
+        if local_file_path and os.path.exists(local_file_path):
+            os.remove(local_file_path)
 
     return state
+
+
+def save_upload(uploaded_file) -> str:
+    '''Write the uploaded video to a unique temp file and return its path.'''
+    suffix = os.path.splitext(uploaded_file.name)[1] or ".mp4"
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        tmp.write(uploaded_file.getbuffer())
+        return tmp.name
 
 
 def render_report(state: dict) -> None:
@@ -102,24 +119,39 @@ def render_report(state: dict) -> None:
 st.title("Brand Guardian")
 st.caption("AI video compliance audit — Azure Video Indexer + Azure AI Search (RAG) + GPT-4o")
 
-with st.form("audit_form"):
-    video_url = st.text_input(
-        "YouTube video URL",
-        value="https://youtu.be/dT7S75eYhcQ",
-        placeholder="https://www.youtube.com/watch?v=...",
-    )
-    submitted = st.form_submit_button("Run audit", type="primary")
+# YouTube URL input is disabled: YouTube blocks downloads from cloud server IPs
+# ("Sign in to confirm you're not a bot"), so only video upload is supported.
+#
+# tab_upload, tab_youtube = st.tabs(["Upload video", "YouTube URL"])
+# with tab_youtube:
+#     st.caption("Downloads can be blocked by YouTube when running from a cloud server. Use Upload if this fails.")
+#     with st.form("youtube_form"):
+#         video_url = st.text_input(
+#             "YouTube video URL",
+#             value="https://youtu.be/dT7S75eYhcQ",
+#             placeholder="https://www.youtube.com/watch?v=...",
+#         )
+#         submitted_youtube = st.form_submit_button("Run audit", type="primary")
 
-if submitted:
-    url = video_url.strip()
-    if "youtube.com" not in url and "youtu.be" not in url:
-        st.error("Please enter a valid YouTube URL.")
-    else:
-        try:
-            st.session_state["report"] = run_audit(url)
-        except Exception as e:
-            st.session_state.pop("report", None)
-            st.error(f"Workflow execution failed: {e}")
+with st.form("upload_form"):
+    uploaded = st.file_uploader("Video file", type=["mp4", "mov", "mkv", "webm", "avi"])
+    submitted_upload = st.form_submit_button("Run audit", type="primary")
+
+try:
+    if submitted_upload:
+        if uploaded is None:
+            st.error("Please choose a video file first.")
+        else:
+            st.session_state["report"] = run_audit(local_file_path=save_upload(uploaded))
+    # elif submitted_youtube:
+    #     url = video_url.strip()
+    #     if "youtube.com" not in url and "youtu.be" not in url:
+    #         st.error("Please enter a valid YouTube URL.")
+    #     else:
+    #         st.session_state["report"] = run_audit(video_url=url)
+except Exception as e:
+    st.session_state.pop("report", None)
+    st.error(f"Workflow execution failed: {e}")
 
 if "report" in st.session_state:
     render_report(st.session_state["report"])

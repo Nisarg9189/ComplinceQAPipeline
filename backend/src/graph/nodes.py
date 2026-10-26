@@ -37,9 +37,13 @@ def index_video_node(state: VideoAuditState) -> Dict[str, Any]:
     try:
         vi_service = VideoIndexerService()
         
-        # download : yt-dlp
-        
-        if "youtube.com" in video_url or "youtu.be" in video_url:
+        # use an already available local file (e.g. uploaded from the UI), else download : yt-dlp
+
+        uploaded_path = state.get("local_file_path")
+
+        if uploaded_path and os.path.exists(uploaded_path):
+            local_path = uploaded_path
+        elif video_url and ("youtube.com" in video_url or "youtu.be" in video_url):
             local_path = vi_service.download_youtube_video(video_url, output_path=local_filename)
         else:
             raise Exception("Please provide a valid YouTube URL for test.")
